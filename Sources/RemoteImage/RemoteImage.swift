@@ -14,6 +14,7 @@ public struct RemoteImage<Success: View,
 
     // MARK: Public ― View Builders
     private let success: (Image) -> Success
+    private let onSuccess: ((Image) -> Void)?
     private let placeholder: () -> Placeholder
     private let failure: (Error) -> Failure
 
@@ -40,7 +41,8 @@ public struct RemoteImage<Success: View,
         progress: ProgressHandler? = nil,
         @ViewBuilder placeholder: @escaping () -> Placeholder,
         @ViewBuilder failure: @escaping (Error) -> Failure,
-        @ViewBuilder success: @escaping (Image) -> Success
+        @ViewBuilder success: @escaping (Image) -> Success,
+        onSuccess: ((Image) -> Void)? = nil
     ) {
         self.url               = url
         self.pipeline          = pipeline
@@ -51,6 +53,7 @@ public struct RemoteImage<Success: View,
         self.placeholder       = placeholder
         self.failure           = failure
         self.success           = success
+        self.onSuccess         = onSuccess
         _loader                = StateObject(wrappedValue: Loader())
     }
 
@@ -85,7 +88,11 @@ public struct RemoteImage<Success: View,
         case .empty:
             placeholder()
         case .success(let uiImage):
-            success(Image(uiImage: uiImage))
+            let image = Image(uiImage: uiImage)
+            success(image)
+                .onAppear {
+                    onSuccess?(image)
+                }
                 .transition(.opacity)
                 .animation(fadeInDuration.map { .easeInOut(duration: $0) },
                            value: loader.phase)
@@ -209,7 +216,8 @@ extension RemoteImage {
              progress: progressHandler,
              placeholder: placeholder,
              failure: failure,
-             success: success)
+             success: success,
+             onSuccess: onSuccess)
     }
 
     public func cancelOnDisappear(_ enabled: Bool = true) -> Self {
@@ -221,7 +229,8 @@ extension RemoteImage {
              progress: progressHandler,
              placeholder: placeholder,
              failure: failure,
-             success: success)
+             success: success,
+             onSuccess: onSuccess)
     }
 
     public func cancelLoading(trigger: Binding<Bool>) -> Self {
@@ -233,7 +242,8 @@ extension RemoteImage {
              progress: progressHandler,
              placeholder: placeholder,
              failure: failure,
-             success: success)
+             success: success,
+             onSuccess: onSuccess)
     }
 
     public func onProgress(_ handler: @escaping ProgressHandler) -> Self {
@@ -245,7 +255,21 @@ extension RemoteImage {
              progress: handler,
              placeholder: placeholder,
              failure: failure,
-             success: success)
+             success: success,
+             onSuccess: onSuccess)
+    }
+
+    public func onSuccess(_ handler: @escaping (Image) -> Void) -> Self {
+        Self(url: url,
+             pipeline: pipeline,
+             fadeInDuration: fadeInDuration,
+             cancelOnDisappear: cancelOnDisappear,
+             cancelTrigger: $cancelTrigger,
+             progress: progressHandler,
+             placeholder: placeholder,
+             failure: failure,
+             success: success,
+             onSuccess: handler)
     }
 
     public func placeholder<V: View>(
@@ -260,7 +284,8 @@ extension RemoteImage {
             progress: progressHandler,
             placeholder: builder,
             failure: failure,
-            success: success)
+            success: success,
+            onSuccess: onSuccess)
     }
 
     public func failure<V: View>(
@@ -275,9 +300,10 @@ extension RemoteImage {
             progress: progressHandler,
             placeholder: placeholder,
             failure: builder,
-            success: success)
+            success: success,
+            onSuccess: onSuccess)
     }
-    
+
     public func resizable(
         capInsets: EdgeInsets = EdgeInsets(),
         resizingMode: Image.ResizingMode = .stretch
@@ -293,6 +319,7 @@ extension RemoteImage {
             failure: failure,
             success: { img in
                 img.resizable(capInsets: capInsets, resizingMode: resizingMode)
-            })
+            },
+            onSuccess: onSuccess)
     }
 }
