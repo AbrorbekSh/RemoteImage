@@ -3,7 +3,6 @@ import OSLog
 
 // MARK: - DataLoader
 protocol DataLoader: Sendable {
-    @discardableResult
     func data(
         for url: URL,
         onProgress: @Sendable @escaping (_ received: Int64, _ total: Int64?) -> Void
